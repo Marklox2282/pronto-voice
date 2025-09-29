@@ -1,25 +1,37 @@
-import { useState } from "react";
-import { Hash, Users, Bell, Pin, Search, Send, Plus, Gift, Smile } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Hash, Users, Bell, Pin, Send, Plus, Gift, Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
 
 interface Message {
   id: string;
-  user: string;
-  avatar: string;
+  user_id: string;
   content: string;
-  timestamp: string;
+  created_at: string;
+  profiles?: {
+    username: string;
+    avatar_url: string | null;
+  };
 }
 
 interface ChatAreaProps {
   channelName: string;
   messages: Message[];
   onSendMessage: (content: string) => void;
+  loading: boolean;
 }
 
-export function ChatArea({ channelName, messages, onSendMessage }: ChatAreaProps) {
+export function ChatArea({ channelName, messages, onSendMessage, loading }: ChatAreaProps) {
   const [newMessage, setNewMessage] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const handleSend = () => {
     if (newMessage.trim()) {
@@ -61,24 +73,42 @@ export function ChatArea({ channelName, messages, onSendMessage }: ChatAreaProps
         </div>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         <div className="space-y-4">
-          {messages.map((message) => (
-            <div key={message.id} className="flex gap-3 hover:bg-muted/50 p-2 rounded-lg transition-colors">
-              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                <span className="text-sm font-semibold text-primary-foreground">
-                  {message.user.charAt(0)}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-semibold text-foreground">{message.user}</span>
-                  <span className="text-xs text-muted-foreground">{message.timestamp}</span>
-                </div>
-                <p className="text-foreground break-words">{message.content}</p>
-              </div>
+          {loading ? (
+            <div className="text-center text-muted-foreground py-8">Loading messages...</div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              No messages yet. Be the first to say something!
             </div>
-          ))}
+          ) : (
+            messages.map((message) => {
+              const username = message.profiles?.username || "Unknown User";
+              const avatarUrl = message.profiles?.avatar_url;
+              const timestamp = format(new Date(message.created_at), "MMM d, h:mm a");
+
+              return (
+                <div key={message.id} className="flex gap-3 hover:bg-muted/50 p-2 rounded-lg transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-semibold text-primary-foreground">
+                        {username.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-semibold text-foreground">{username}</span>
+                      <span className="text-xs text-muted-foreground">{timestamp}</span>
+                    </div>
+                    <p className="text-foreground break-words">{message.content}</p>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </ScrollArea>
 
